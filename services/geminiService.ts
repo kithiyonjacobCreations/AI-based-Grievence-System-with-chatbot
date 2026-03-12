@@ -14,7 +14,7 @@ export const analyzeGrievanceState = async (complaintText: string, history: Chat
   try {
     const ai = getAI();
     const model = "gemini-3-flash-preview";
-    
+
     const historyText = (history || []).map((m: any) => `${m.role}: ${m.content}`).join("\n");
 
     const prompt = `
@@ -67,18 +67,34 @@ export const analyzeGrievanceState = async (complaintText: string, history: Chat
   }
 };
 
-export const getStaffAssistance = async (description: string, sentiment: string) => {
+export const getStaffAssistance = async (grievance: any) => {
   try {
     const ai = getAI();
     const model = "gemini-3-flash-preview";
 
-    const prompt = `Complaint: "${description}"\nDetected Sentiment: ${sentiment}`;
+    const prompt = `
+      Case Details:
+      Title: ${grievance.title}
+      Description: ${grievance.description}
+      Department: ${grievance.department}
+      Status: ${grievance.status}
+      
+      History:
+      ${JSON.stringify(grievance.history, null, 2)}
+      
+      Conversation:
+      ${JSON.stringify(grievance.conversation, null, 2)}
+      
+      Task:
+      1. Summarize the case details and the flow of actions based on the history and conversation.
+      2. Give professional, actionable suggestions for solving this issue practically.
+    `;
 
     const result = await ai.models.generateContent({
       model,
       contents: prompt,
       config: {
-        systemInstruction: `You are a professional Staff Mediator. The student seems ${sentiment}. Suggest a resolution strategy that addresses this emotion and the technical issue.`,
+        systemInstruction: "You are a professional Staff Problem Solver. Provide concise summaries and effective resolution strategies.",
       }
     });
 
@@ -112,7 +128,7 @@ export const getGrievanceSummary = async (id: string, grievanceData?: any) => {
     const result = await ai.models.generateContent({
       model,
       contents: prompt,
-      config: { 
+      config: {
         responseMimeType: "application/json",
         responseSchema: {
           type: Type.OBJECT,

@@ -1,5 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'motion/react';
 import { Bell, CheckCircle, MessageSquare, AlertCircle, X, Check } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
@@ -15,6 +16,7 @@ interface Notification {
 }
 
 const NotificationCenter: React.FC<{ onClose: () => void }> = ({ onClose }) => {
+  const navigate = useNavigate();
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -95,7 +97,7 @@ const NotificationCenter: React.FC<{ onClose: () => void }> = ({ onClose }) => {
           <h3 className="font-bold text-slate-900 text-lg">Notifications</h3>
         </div>
         <div className="flex items-center gap-2">
-          <button 
+          <button
             onClick={markAllAsRead}
             className="text-xs font-semibold text-indigo-600 hover:text-indigo-700 transition-colors"
           >
@@ -121,10 +123,18 @@ const NotificationCenter: React.FC<{ onClose: () => void }> = ({ onClose }) => {
         ) : (
           <div className="divide-y divide-slate-50">
             {notifications.map((notification) => (
-              <div 
+              <div
                 key={notification.id}
                 className={`p-4 hover:bg-slate-50 transition-colors cursor-pointer relative group ${!notification.isRead ? 'bg-indigo-50/30' : ''}`}
-                onClick={() => !notification.isRead && markAsRead(notification.id)}
+                onClick={() => {
+                  if (!notification.isRead) markAsRead(notification.id);
+                  onClose();
+                  if (notification.type === 'message' || notification.type === 'status_change') {
+                    navigate('/track');
+                  } else if (notification.link) {
+                    navigate(notification.link);
+                  }
+                }}
               >
                 <div className="flex gap-3">
                   <div className="mt-1">{getIcon(notification.type)}</div>

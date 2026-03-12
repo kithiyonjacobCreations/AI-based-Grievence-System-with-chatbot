@@ -16,6 +16,7 @@ const GrievanceChatbot: React.FC = () => {
   const [input, setInput] = useState('');
   const [isTyping, setIsTyping] = useState(false);
   const [analysis, setAnalysis] = useState<any>(null);
+  const [attachment, setAttachment] = useState<any>(null);
   
   const scrollRef = useRef<HTMLDivElement>(null);
 
@@ -30,6 +31,7 @@ const GrievanceChatbot: React.FC = () => {
       ]);
       setInput('');
       setAnalysis(null);
+      setAttachment(null);
     };
 
     window.addEventListener('reset-grievance-chat', handleReset);
@@ -58,6 +60,7 @@ const GrievanceChatbot: React.FC = () => {
             `**Dept:** ${result.department}\n` +
             `**Impact:** ${result.severity.toUpperCase()}\n` +
             `**Proposed Status:** ${result.initialStatus}\n\n` +
+            `You can optionally add an image for extra proof using the paperclip icon.\n` +
             `Type **'Confirm'** to finalize filing.`
           );
         }
@@ -99,6 +102,7 @@ const GrievanceChatbot: React.FC = () => {
       lastStatusChange: now,
       history: [{ status: initialStatus, timestamp: now, userId: 'SYSTEM', remark: `Case registered with initial status: ${initialStatus}` }],
       remarks: [],
+      attachments: attachment ? [attachment] : [],
       notificationsSent: [{ type: 'EMAIL', timestamp: now, message: 'Filing Confirmation Sent' }],
       conversation: [],
       sentiment: analysis?.sentiment,
@@ -108,6 +112,29 @@ const GrievanceChatbot: React.FC = () => {
     await saveGrievance(newGrievance);
     addBotMessage(`✅ **Verified.** Ref: **#${grievanceId}**.\n\nRouted to **${dept}**. ${isAnonymous ? "Filing is Anonymous." : "Filing linked to profile."}`);
     setState('DONE');
+  };
+
+  const handleAttachment = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      if (!file.type.startsWith('image/')) {
+        alert('Only images are allowed as extra proof.');
+        return;
+      }
+      if (file.size > 5 * 1024 * 1024) {
+        alert('File size should be less than 5MB.');
+        return;
+      }
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        setAttachment({
+          name: file.name,
+          type: file.type,
+          data: event.target?.result as string
+        });
+      };
+      reader.readAsDataURL(file);
+    }
   };
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -167,22 +194,41 @@ const GrievanceChatbot: React.FC = () => {
       </div>
 
       <div className="p-8 bg-white border-t border-slate-100">
-        <form onSubmit={handleSubmit} className="flex gap-4">
-          <input
-            type="text"
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            placeholder={state === 'DONE' ? "Filing session complete." : "Describe the institutional concern..."}
-            disabled={state === 'DONE' || isTyping}
-            className="flex-1 bg-slate-50 border border-slate-200 rounded-2xl px-7 py-5 text-sm font-semibold focus:ring-2 focus:ring-indigo-600 focus:bg-white outline-none transition-all"
-          />
-          <button 
-            type="submit" 
-            disabled={!input.trim() || isTyping || state === 'DONE'} 
-            className="bg-slate-900 text-white px-12 py-5 rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-slate-800 active:scale-95 transition-all shadow-xl shadow-slate-200 disabled:opacity-30"
-          >
-            Submit
-          </button>
+        <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+          {attachment && (
+            <div className="flex items-center gap-3 bg-indigo-50 px-4 py-2 rounded-xl self-start">
+              <div className="w-8 h-8 rounded-lg overflow-hidden bg-slate-200">
+                <img src={attachment.data} alt="attachment" className="w-full h-full object-cover" />
+              </div>
+              <span className="text-xs font-bold text-indigo-900">{attachment.name}</span>
+              <button type="button" onClick={() => setAttachment(null)} className="text-indigo-400 hover:text-indigo-600 transition-colors ml-2">
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+              </button>
+            </div>
+          )}
+          <div className="flex gap-4 items-center">
+            {state === 'REVIEW' && (
+              <label className="cursor-pointer bg-slate-100 hover:bg-slate-200 text-slate-500 p-4 rounded-xl transition-all">
+                <input type="file" accept="image/*" onChange={handleAttachment} className="hidden" />
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13"></path></svg>
+              </label>
+            )}
+            <input
+              type="text"
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              placeholder={state === 'DONE' ? "Filing session complete." : "Describe the institutional concern..."}
+              disabled={state === 'DONE' || isTyping}
+              className="flex-1 bg-slate-50 border border-slate-200 rounded-2xl px-7 py-5 text-sm font-semibold focus:ring-2 focus:ring-indigo-600 focus:bg-white outline-none transition-all"
+            />
+            <button 
+              type="submit" 
+              disabled={!input.trim() || isTyping || state === 'DONE'} 
+              className="bg-slate-900 text-white px-12 py-5 rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-slate-800 active:scale-95 transition-all shadow-xl shadow-slate-200 disabled:opacity-30"
+            >
+              Submit
+            </button>
+          </div>
         </form>
       </div>
     </div>

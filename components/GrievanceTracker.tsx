@@ -21,8 +21,8 @@ const GrievanceTracker: React.FC = () => {
     const all = await getGrievances();
     setGrievances(all);
     if (selectedGrievance) {
-        const updated = all.find(g => g.id === selectedGrievance.id);
-        if (updated) setSelectedGrievance(updated);
+      const updated = all.find(g => g.id === selectedGrievance.id);
+      if (updated) setSelectedGrievance(updated);
     }
   };
 
@@ -51,8 +51,8 @@ const GrievanceTracker: React.FC = () => {
     if (!chatInput.trim() || !selectedGrievance) return;
     const res = await sendMessage(selectedGrievance.id, chatInput);
     if (res) {
-        setChatInput('');
-        setSelectedGrievance(res);
+      setChatInput('');
+      setSelectedGrievance(res);
     }
   };
 
@@ -103,41 +103,40 @@ const GrievanceTracker: React.FC = () => {
 
       {/* RESOLUTION HUB MODAL (Direct Chat) */}
       {selectedGrievance && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-6 bg-slate-900/40 backdrop-blur-md animate-in fade-in duration-300">
-          <div className="bg-white rounded-[40px] w-full max-w-4xl h-[85vh] flex flex-col shadow-2xl border border-slate-200 overflow-hidden animate-in zoom-in-95 duration-200">
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-2 sm:p-6 bg-slate-900/40 backdrop-blur-md animate-in fade-in duration-300">
+          <div className="bg-white rounded-3xl sm:rounded-[40px] w-full max-w-4xl h-[95vh] sm:h-[85vh] flex flex-col shadow-2xl border border-slate-200 overflow-hidden animate-in zoom-in-95 duration-200 mt-4 sm:mt-0">
             {/* Header */}
-            <div className="px-10 py-6 border-b flex items-center justify-between bg-white sticky top-0 z-10">
-              <div className="flex items-center gap-4">
-                 <div className="w-10 h-10 bg-indigo-50 rounded-2xl flex items-center justify-center text-indigo-600 font-black">Ref</div>
-                 <div>
-                   <h3 className="text-xl font-black text-slate-900 tracking-tight">Case #{selectedGrievance.id}</h3>
-                   <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-0.5">Direct Messaging Channel</p>
-                 </div>
+            <div className="px-5 py-4 sm:px-10 sm:py-6 border-b flex items-center justify-between bg-white sticky top-0 z-10 shrink-0">
+              <div className="flex items-center gap-3 sm:gap-4">
+                <div className="w-8 h-8 sm:w-10 sm:h-10 bg-indigo-50 rounded-xl sm:rounded-2xl flex items-center justify-center text-indigo-600 font-black text-xs sm:text-base">Ref</div>
+                <div>
+                  <h3 className="text-lg sm:text-xl font-black text-slate-900 tracking-tight">Case #{selectedGrievance.id}</h3>
+                  <p className="text-[9px] sm:text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-0.5">Direct Messaging Channel</p>
+                </div>
               </div>
-              <button onClick={() => setSelectedGrievance(null)} className="p-2 text-slate-400 hover:text-red-500 transition-colors">
-                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M6 18L18 6M6 6l12 12" /></svg>
+              <button onClick={() => setSelectedGrievance(null)} className="p-2 sm:p-3 bg-slate-50 sm:bg-transparent text-slate-400 hover:text-red-500 hover:bg-slate-100 rounded-full transition-colors">
+                <svg className="w-5 h-5 sm:w-6 sm:h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M6 18L18 6M6 6l12 12" /></svg>
               </button>
             </div>
 
             {/* Chat Flow */}
-            <div className="flex-1 overflow-y-auto p-10 space-y-8 bg-slate-50/10 custom-scrollbar">
+            <div className="flex-1 overflow-y-auto p-5 sm:p-10 space-y-6 sm:space-y-8 bg-slate-50/10 custom-scrollbar">
               <div className="flex flex-col lg:flex-row gap-8">
                 <div className="flex-1">
-                  <div className="bg-indigo-50/50 border border-indigo-100/50 p-6 rounded-3xl mb-10">
+                  <div className="bg-indigo-50/50 border border-indigo-100/50 p-5 sm:p-6 rounded-2xl sm:rounded-3xl mb-8 sm:mb-10">
                     <p className="text-[10px] font-black text-indigo-600 uppercase tracking-widest mb-2">Original Institutional Complaint</p>
-                    <p className="text-sm font-semibold text-slate-800 italic leading-relaxed">"{selectedGrievance.description}"</p>
+                    <p className="text-xs sm:text-sm font-semibold text-slate-800 italic leading-relaxed">"{selectedGrievance.description}"</p>
                   </div>
 
-                  <div className="space-y-8">
+                  <div className="space-y-6 sm:space-y-8">
                     {(selectedGrievance.conversation || []).filter(m => m.type === ChatType.STUDENT_STAFF).map((msg) => (
                       <div key={msg.id} className={`flex ${msg.senderId === user.id ? 'justify-end' : 'justify-start'}`}>
-                        <div className="max-w-[85%]">
-                          <p className={`text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5 px-1 ${msg.senderId === user.id ? 'text-right' : 'text-left'}`}>
+                        <div className="max-w-[90%] sm:max-w-[85%]">
+                          <p className={`text-[9px] sm:text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5 px-1 ${msg.senderId === user.id ? 'text-right' : 'text-left'}`}>
                             {msg.senderId === user.id ? 'You' : 'KIT Staff Authority'}
                           </p>
-                          <div className={`px-6 py-4 rounded-3xl text-sm font-medium shadow-sm border ${
-                            msg.senderId === user.id ? 'bg-indigo-600 text-white border-indigo-500 rounded-tr-none' : 'bg-white text-slate-700 border-slate-200 rounded-tl-none'
-                          }`}>
+                          <div className={`px-5 py-3 sm:px-6 sm:py-4 rounded-2xl sm:rounded-3xl text-sm font-medium shadow-sm border ${msg.senderId === user.id ? 'bg-indigo-600 text-white border-indigo-500 rounded-tr-none' : 'bg-white text-slate-700 border-slate-200 rounded-tl-none'
+                            }`}>
                             {msg.content}
                           </div>
                         </div>
@@ -156,16 +155,16 @@ const GrievanceTracker: React.FC = () => {
             </div>
 
             {/* Input */}
-            <div className="p-8 bg-white border-t">
-              <form onSubmit={handleSendMessage} className="flex gap-4">
-                <input 
-                  type="text" 
-                  value={chatInput} 
-                  onChange={e => setChatInput(e.target.value)} 
+            <div className="p-4 sm:p-8 bg-white border-t shrink-0">
+              <form onSubmit={handleSendMessage} className="flex gap-3 sm:gap-4">
+                <input
+                  type="text"
+                  value={chatInput}
+                  onChange={e => setChatInput(e.target.value)}
                   placeholder="Draft your message back to the staff member..."
-                  className="flex-1 bg-slate-50 border border-slate-200 rounded-2xl px-7 py-5 text-sm font-semibold focus:ring-2 focus:ring-indigo-600 outline-none"
+                  className="flex-1 bg-slate-50 border border-slate-200 rounded-xl sm:rounded-2xl px-5 py-4 sm:px-7 sm:py-5 text-sm font-semibold focus:ring-2 focus:ring-indigo-600 outline-none w-full min-w-0"
                 />
-                <button type="submit" disabled={!chatInput.trim()} className="bg-slate-900 text-white px-10 py-5 rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-slate-800 disabled:opacity-30 transition-all">Send</button>
+                <button type="submit" disabled={!chatInput.trim()} className="bg-slate-900 text-white px-6 py-4 sm:px-10 sm:py-5 rounded-xl sm:rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-slate-800 disabled:opacity-30 transition-all shrink-0">Send</button>
               </form>
             </div>
           </div>

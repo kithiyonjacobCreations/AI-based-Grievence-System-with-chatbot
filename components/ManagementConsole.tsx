@@ -22,11 +22,13 @@ const ManagementConsole: React.FC = () => {
   const [isAiLoading, setIsAiLoading] = useState(false);
   const [aiSummary, setAiSummary] = useState<{ summary: string, actionPoints: string[], toneRecommendation: string } | null>(null);
   const [isSummaryLoading, setIsSummaryLoading] = useState(false);
-  
+
   const [showTransfer, setShowTransfer] = useState(false);
   const [transferDept, setTransferDept] = useState<Department | ''>('');
   const [transferStaffId, setTransferStaffId] = useState('');
   const [transferReason, setTransferReason] = useState('');
+  const [showSolveModal, setShowSolveModal] = useState(false);
+  const [solveDescription, setSolveDescription] = useState('');
   const [activeChatTab, setActiveChatTab] = useState<ChatType>(ChatType.STUDENT_STAFF);
   const [selectedRecipientId, setSelectedRecipientId] = useState<string>('');
 
@@ -98,6 +100,22 @@ const ManagementConsole: React.FC = () => {
     setGrievance(updated);
   };
 
+  const handleResolve = async () => {
+    if (!grievance || !currentUser || !solveDescription.trim()) return;
+    const now = Date.now();
+    const updated = {
+      ...grievance,
+      status: Status.RESOLVED,
+      lastStatusChange: now,
+      history: [...grievance.history, { status: Status.RESOLVED, timestamp: now, userId: currentUser.id, remark: `Resolved: ${solveDescription}` }],
+      remarks: [...(grievance.remarks || []), solveDescription]
+    };
+    await updateGrievance(updated);
+    setGrievance(updated);
+    setShowSolveModal(false);
+    setSolveDescription('');
+  };
+
   const handleTransfer = async () => {
     if (!grievance || !transferDept || !transferStaffId || !transferReason) return;
     const res = await transferGrievance(grievance.id, transferDept as Department, transferStaffId, transferReason);
@@ -116,7 +134,7 @@ const ManagementConsole: React.FC = () => {
     <div className="flex flex-col xl:flex-row gap-6 h-[calc(100vh-160px)] animate-in fade-in duration-500 overflow-hidden">
       {/* SIDEBAR: Case Context */}
       <div className="xl:w-[380px] flex flex-col gap-5 overflow-y-auto custom-scrollbar pr-1">
-        
+
         {/* Core Case Card */}
         <div className="bg-white rounded-[32px] border border-slate-200 p-6 shadow-sm">
           <div className="flex justify-between items-center mb-6">
@@ -140,11 +158,17 @@ const ManagementConsole: React.FC = () => {
 
           <div className="flex flex-col gap-3">
             <div className="grid grid-cols-2 gap-3">
-               <button onClick={() => handleUpdateStatus(Status.IN_PROGRESS)} className="py-3.5 bg-indigo-50 text-indigo-700 font-bold text-[11px] rounded-2xl uppercase hover:bg-indigo-100 transition-all active:scale-95">Accept Case</button>
-               <button onClick={() => handleUpdateStatus(Status.RESOLVED)} className="py-3.5 bg-emerald-600 text-white font-bold text-[11px] rounded-2xl uppercase hover:bg-emerald-700 transition-all shadow-lg active:scale-95">Resolve</button>
+              <button
+                onClick={() => handleUpdateStatus(Status.IN_PROGRESS)}
+                disabled={grievance.status !== Status.PENDING}
+                className={`py-3.5 font-bold text-[11px] rounded-2xl uppercase transition-all ${grievance.status === Status.PENDING ? 'bg-indigo-50 text-indigo-700 hover:bg-indigo-100 active:scale-95' : 'bg-slate-100 text-slate-400 opacity-70 cursor-not-allowed'}`}
+              >
+                {grievance.status !== Status.PENDING ? 'Accepted Case' : 'Accept Case'}
+              </button>
+              <button onClick={() => setShowSolveModal(true)} className="py-3.5 bg-emerald-600 text-white font-bold text-[11px] rounded-2xl uppercase hover:bg-emerald-700 transition-all shadow-lg active:scale-95">Resolve</button>
             </div>
             {grievance.status === Status.RESOLVED && (
-              <button 
+              <button
                 onClick={handleDownloadReport}
                 className="w-full py-3.5 bg-slate-900 text-white font-bold text-[11px] rounded-2xl uppercase hover:bg-slate-800 transition-all active:scale-95 flex items-center justify-center gap-2"
               >
@@ -166,7 +190,7 @@ const ManagementConsole: React.FC = () => {
               </button>
             )}
           </div>
-          
+
           {isSummaryLoading ? (
             <div className="space-y-3 animate-pulse">
               <div className="h-4 bg-slate-100 rounded w-3/4"></div>
@@ -246,32 +270,32 @@ const ManagementConsole: React.FC = () => {
         {/* AI MEDIATOR TOOL: Staff Support */}
         <div className="bg-indigo-900 rounded-[32px] p-7 text-white shadow-xl shadow-indigo-900/10 flex flex-col gap-5">
           <div className="flex items-center justify-between">
-             <div className="flex items-center gap-3">
-                <div className="w-8 h-8 bg-indigo-500 rounded-xl flex items-center justify-center font-black text-[10px]">AI</div>
-                <p className="text-[11px] font-black uppercase tracking-[0.2em]">Mediator Advice</p>
-             </div>
-             {isAiLoading && <div className="w-4 h-4 border-2 border-indigo-400 border-t-transparent rounded-full animate-spin"></div>}
+            <div className="flex items-center gap-3">
+              <div className="w-8 h-8 bg-indigo-500 rounded-xl flex items-center justify-center font-black text-[10px]">AI</div>
+              <p className="text-[11px] font-black uppercase tracking-[0.2em]">Mediator Advice</p>
+            </div>
+            {isAiLoading && <div className="w-4 h-4 border-2 border-indigo-400 border-t-transparent rounded-full animate-spin"></div>}
           </div>
-          
+
           <div className="min-h-[80px]">
             <p className="text-[12px] leading-relaxed text-indigo-100/80 font-medium italic">
               {aiResponse || 'Consult the mediator for resolution strategies and student communication drafts.'}
             </p>
           </div>
 
-          <button 
+          <button
             onClick={async () => {
-                if (!grievance) return;
-                setIsAiLoading(true);
-                try {
-                  const res = await getStaffAssistance(grievance.description, grievance.sentiment || 'Neutral');
-                  setAiResponse(res || 'Mediator busy. Try again.');
-                } catch (e) {
-                  setAiResponse('AI Gateway Timeout.');
-                } finally {
-                  setIsAiLoading(false);
-                }
-            }} 
+              if (!grievance) return;
+              setIsAiLoading(true);
+              try {
+                const res = await getStaffAssistance(grievance);
+                setAiResponse(res || 'Mediator busy. Try again.');
+              } catch (e) {
+                setAiResponse('AI Gateway Timeout.');
+              } finally {
+                setIsAiLoading(false);
+              }
+            }}
             disabled={isAiLoading}
             className="w-full py-3.5 bg-white text-indigo-900 rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-indigo-50 active:scale-95 transition-all disabled:opacity-50 shadow-lg shadow-indigo-950/20"
           >
@@ -289,20 +313,20 @@ const ManagementConsole: React.FC = () => {
       <div className="flex-1 flex flex-col bg-white rounded-[32px] border border-slate-200 shadow-sm overflow-hidden min-h-0">
         <div className="px-8 py-5 border-b flex items-center justify-between bg-white/80 backdrop-blur-md sticky top-0 z-10">
           <div className="flex items-center gap-8">
-             <button 
-               onClick={() => setActiveChatTab(ChatType.STUDENT_STAFF)}
-               className={`relative py-2 text-[10px] font-black uppercase tracking-[0.2em] transition-all ${activeChatTab === ChatType.STUDENT_STAFF ? 'text-indigo-600' : 'text-slate-400 hover:text-slate-600'}`}
-             >
-               Student Channel
-               {activeChatTab === ChatType.STUDENT_STAFF && <div className="absolute -bottom-5 left-0 right-0 h-1 bg-indigo-600 rounded-full"></div>}
-             </button>
-             <button 
-               onClick={() => setActiveChatTab(ChatType.STAFF_STAFF)}
-               className={`relative py-2 text-[10px] font-black uppercase tracking-[0.2em] transition-all ${activeChatTab === ChatType.STAFF_STAFF ? 'text-indigo-600' : 'text-slate-400 hover:text-slate-600'}`}
-             >
-               Internal Staff Chat
-               {activeChatTab === ChatType.STAFF_STAFF && <div className="absolute -bottom-5 left-0 right-0 h-1 bg-indigo-600 rounded-full"></div>}
-             </button>
+            <button
+              onClick={() => setActiveChatTab(ChatType.STUDENT_STAFF)}
+              className={`relative py-2 text-[10px] font-black uppercase tracking-[0.2em] transition-all ${activeChatTab === ChatType.STUDENT_STAFF ? 'text-indigo-600' : 'text-slate-400 hover:text-slate-600'}`}
+            >
+              Student Channel
+              {activeChatTab === ChatType.STUDENT_STAFF && <div className="absolute -bottom-5 left-0 right-0 h-1 bg-indigo-600 rounded-full"></div>}
+            </button>
+            <button
+              onClick={() => setActiveChatTab(ChatType.STAFF_STAFF)}
+              className={`relative py-2 text-[10px] font-black uppercase tracking-[0.2em] transition-all ${activeChatTab === ChatType.STAFF_STAFF ? 'text-indigo-600' : 'text-slate-400 hover:text-slate-600'}`}
+            >
+              Internal Staff Chat
+              {activeChatTab === ChatType.STAFF_STAFF && <div className="absolute -bottom-5 left-0 right-0 h-1 bg-indigo-600 rounded-full"></div>}
+            </button>
           </div>
           <div className="flex items-center gap-2">
             <div className={`w-2 h-2 rounded-full animate-pulse ${activeChatTab === ChatType.STUDENT_STAFF ? 'bg-emerald-500' : 'bg-amber-500'}`}></div>
@@ -317,8 +341,8 @@ const ManagementConsole: React.FC = () => {
           {activeChatTab === ChatType.STAFF_STAFF && (
             <div className="flex items-center gap-4 p-4 bg-indigo-50/50 rounded-2xl border border-indigo-100/50 mb-6">
               <span className="text-[10px] font-black text-indigo-600 uppercase tracking-widest">To:</span>
-              <select 
-                value={selectedRecipientId} 
+              <select
+                value={selectedRecipientId}
                 onChange={e => setSelectedRecipientId(e.target.value)}
                 className="flex-1 bg-white border border-indigo-100 rounded-xl px-3 py-2 text-xs font-bold text-slate-700 outline-none focus:ring-2 focus:ring-indigo-500"
               >
@@ -332,11 +356,11 @@ const ManagementConsole: React.FC = () => {
 
           {/* Main Concern Anchor */}
           <div className="flex justify-center mb-10">
-             <div className="max-w-[85%] bg-white border border-slate-100 p-8 rounded-[32px] shadow-sm relative overflow-hidden">
-                <div className="absolute top-0 left-0 w-1.5 h-full bg-indigo-500"></div>
-                <p className="text-[10px] font-black text-indigo-600 uppercase tracking-widest mb-3">Institutional Complaint Anchor</p>
-                <p className="text-[15px] font-semibold text-slate-800 leading-relaxed italic">"{grievance.description}"</p>
-             </div>
+            <div className="max-w-[85%] bg-white border border-slate-100 p-8 rounded-[32px] shadow-sm relative overflow-hidden">
+              <div className="absolute top-0 left-0 w-1.5 h-full bg-indigo-500"></div>
+              <p className="text-[10px] font-black text-indigo-600 uppercase tracking-widest mb-3">Institutional Complaint Anchor</p>
+              <p className="text-[15px] font-semibold text-slate-800 leading-relaxed italic">"{grievance.description}"</p>
+            </div>
           </div>
 
           {(grievance.conversation || []).filter(m => {
@@ -351,22 +375,21 @@ const ManagementConsole: React.FC = () => {
               <div className="max-w-[75%] space-y-1.5">
                 <div className={`flex items-center gap-2 px-1 ${msg.senderId === currentUser.id ? 'justify-end' : 'justify-start'}`}>
                   <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
-                    {msg.senderId === currentUser.id 
-                      ? 'You' 
-                      : (activeChatTab === ChatType.STUDENT_STAFF 
-                          ? (grievance.isAnonymous ? 'Anonymous Student' : (msg.senderName || 'Student'))
-                          : (msg.senderName || 'Staff Member'))}
+                    {msg.senderId === currentUser.id
+                      ? 'You'
+                      : (activeChatTab === ChatType.STUDENT_STAFF
+                        ? (grievance.isAnonymous ? 'Anonymous Student' : (msg.senderName || 'Student'))
+                        : (msg.senderName || 'Staff Member'))}
                   </span>
                 </div>
-                <div className={`px-6 py-4 rounded-3xl text-[14px] font-medium shadow-sm border ${
-                  msg.senderId === currentUser.id 
-                    ? 'bg-slate-900 text-white border-slate-800 rounded-tr-none' 
+                <div className={`px-6 py-4 rounded-3xl text-[14px] font-medium shadow-sm border ${msg.senderId === currentUser.id
+                    ? 'bg-slate-900 text-white border-slate-800 rounded-tr-none'
                     : 'bg-white text-slate-700 border-slate-200 rounded-tl-none'
-                }`}>
+                  }`}>
                   {activeChatTab === ChatType.STAFF_STAFF && msg.recipientId && (
                     <div className="mb-2 pb-2 border-b border-white/10 flex items-center gap-2">
-                       <span className="text-[9px] font-black uppercase opacity-60">To:</span>
-                       <span className="text-[10px] font-black uppercase tracking-tight">{msg.recipientName || 'Staff'}</span>
+                      <span className="text-[9px] font-black uppercase opacity-60">To:</span>
+                      <span className="text-[10px] font-black uppercase tracking-tight">{msg.recipientName || 'Staff'}</span>
                     </div>
                   )}
                   {msg.content}
@@ -382,16 +405,16 @@ const ManagementConsole: React.FC = () => {
 
         <div className="p-7 bg-white border-t">
           <form onSubmit={handleSendMessage} className="flex gap-4">
-            <input 
-              type="text" 
+            <input
+              type="text"
               value={chatInput}
               onChange={e => setChatInput(e.target.value)}
               placeholder={activeChatTab === ChatType.STUDENT_STAFF ? "Draft message to student..." : "Internal note for other staff..."}
               className="flex-1 bg-slate-50 border border-slate-200 rounded-2xl px-7 py-5 text-sm font-semibold focus:ring-2 focus:ring-indigo-500 focus:bg-white outline-none transition-all"
             />
-            <button 
-              type="submit" 
-              disabled={!chatInput.trim()} 
+            <button
+              type="submit"
+              disabled={!chatInput.trim()}
               className="bg-indigo-600 text-white px-10 py-5 rounded-2xl font-bold text-xs uppercase hover:bg-indigo-700 active:scale-95 transition-all shadow-xl shadow-indigo-100 disabled:opacity-50"
             >
               {activeChatTab === ChatType.STUDENT_STAFF ? 'Dispatch' : 'Post Note'}
@@ -406,7 +429,7 @@ const ManagementConsole: React.FC = () => {
           <div className="bg-white rounded-[40px] w-full max-w-xl p-12 shadow-2xl animate-in zoom-in-95 duration-200">
             <h3 className="text-2xl font-black text-slate-900 tracking-tight mb-2">Reassign Grievance</h3>
             <p className="text-sm font-medium text-slate-500 mb-10">Shift ownership to a specialized institutional division.</p>
-            
+
             <div className="space-y-7">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className="space-y-2">
@@ -431,6 +454,32 @@ const ManagementConsole: React.FC = () => {
                 <button onClick={() => setShowTransfer(false)} className="flex-1 py-4.5 bg-slate-50 text-slate-500 font-bold rounded-2xl text-[11px] uppercase">Cancel</button>
                 <button onClick={handleTransfer} disabled={!transferDept || !transferStaffId || !transferReason} className="flex-1 py-4.5 bg-indigo-600 text-white font-bold rounded-2xl text-[11px] uppercase">Transfer Now</button>
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* SOLVE MODAL */}
+      {showSolveModal && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-6 bg-slate-900/40 backdrop-blur-sm animate-in fade-in duration-300">
+          <div className="bg-white rounded-[32px] w-full max-w-md p-8 shadow-2xl animate-in zoom-in-95 duration-200">
+            <h3 className="text-xl font-black text-slate-900 tracking-tight mb-2">Resolve Grievance</h3>
+            <p className="text-xs font-medium text-slate-500 mb-6">Please provide a brief description of how this case was solved.</p>
+            <textarea
+              value={solveDescription}
+              onChange={e => setSolveDescription(e.target.value)}
+              placeholder="Case resolution details..."
+              className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-5 py-4 text-sm font-semibold h-32 resize-none outline-none focus:ring-2 focus:ring-emerald-500 mb-6 custom-scrollbar"
+            />
+            <div className="flex gap-4">
+              <button onClick={() => { setShowSolveModal(false); setSolveDescription(''); }} className="flex-1 py-4 bg-slate-100 text-slate-600 font-bold rounded-xl text-xs uppercase hover:bg-slate-200 transition-all">Cancel</button>
+              <button
+                onClick={handleResolve}
+                disabled={!solveDescription.trim()}
+                className="flex-1 py-4 bg-emerald-600 text-white font-bold rounded-xl text-xs uppercase hover:bg-emerald-700 transition-all disabled:opacity-50"
+              >
+                Submit Resolution
+              </button>
             </div>
           </div>
         </div>
